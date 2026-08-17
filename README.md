@@ -25,15 +25,35 @@ Three clients are set up out of the box: **Bazevics**, **Mandrele** and **Others
 
 ## Setting it up
 
-### 1. Publish the page
+This repository is **private**, and the board is not published on the web. It runs on each
+person's own computer and syncs through GitHub, so client names, jobs and hours are never
+served to anyone who is not a collaborator on the repository.
 
-In the repository: **Settings → Pages → Build and deployment → Deploy from a branch**,
-pick the branch holding these files and folder `/ (root)`. The board is then at
-`https://<owner>.github.io/todolist/`.
+### 1. Get the files onto the computer
 
-You can also just open `index.html` from disk — everything except GitHub sync works.
+```
+git clone https://github.com/AEMbaltic/todolist.git
+```
 
-### 2. Connect GitHub storage
+Or, without git: **Code → Download ZIP** on GitHub, then unzip it somewhere permanent.
+
+### 2. Start it
+
+- **Windows** — double-click `start.cmd`
+- **macOS / Linux** — run `./start.sh`
+
+Either one serves the board at <http://localhost:8765/> and opens a browser at it. It listens
+on the loopback address only, so nothing is reachable from the network — not even from another
+machine in the same office.
+
+It uses Node.js if you have it and falls back to Python; if you have neither, install
+[Node.js](https://nodejs.org) and run it again. Leave the terminal window open while you work,
+and press `Ctrl+C` to stop.
+
+> Opening `index.html` directly by double-clicking also mostly works, but the browser blocks
+> some requests on `file://` URLs. Use the start script — it takes the same one click.
+
+### 3. Connect GitHub storage
 
 The board saves to `data/board.json` in this repository, and pasted screenshots to
 `data/img/`. That's what makes the same board show up on your other computers.
@@ -44,9 +64,12 @@ The board saves to `data/board.json` in this repository, and pasted screenshots 
 4. In the board, click **⚙ Settings**, fill in owner / repo / branch, paste the token,
    press **Test connection**, then **Save**.
 
-The token is stored in your browser's local storage and is never committed. Anyone using
-the board without a token still sees the data (it is read from the published
-`data/board.json`) but cannot save changes back.
+The token is stored in your browser's local storage and is never committed. Do this once per
+computer. Without a token the board still runs, but it keeps everything in that browser and
+nothing is shared.
+
+Because the repository is private, the token must belong to an account with access to it —
+add colleagues under **Settings → Collaborators** first.
 
 ### How saving works
 
@@ -65,17 +88,21 @@ the board without a token still sees the data (it is read from the published
 index.html        page shell (header, desktop, modals)
 css/styles.css    AEM Baltic theme — brand colours are CSS variables at the top
 js/app.js         state, rendering, window management, GitHub sync, billing
+serve.js          the local server (plain Node, no dependencies)
+start.cmd         start it on Windows
+start.sh          start it on macOS / Linux
 data/board.json   the board itself (jobs, hours, rates, image references)
 data/img/         pasted screenshots, one PNG per image
-assets/logo.png   the AEM Baltic logo (optional — see below)
+assets/logo.webp  the AEM Baltic logo (also accepts logo.svg or logo.png)
 ```
 
 ### The logo
 
-Drop the logo in as `assets/logo.png` and the header will use it automatically. Until that
-file exists the header falls back to a typographic wordmark, so nothing breaks either way.
-A light or white version reads best, because the header sits on the dark ground — the rust
-of the standard logo is close in value to the background.
+The header uses `assets/logo.webp`, and will pick up `assets/logo.svg` or `assets/logo.png`
+in preference to it if either exists. With none of them present it falls back to a
+typographic wordmark, so nothing breaks either way. A light or white version reads best,
+because the header sits on the dark ground and the rust of the standard logo is close in
+value to the background.
 
 ### Adding or renaming clients
 

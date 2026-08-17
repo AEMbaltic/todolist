@@ -236,12 +236,13 @@ async function pullBoard() {
   if (cfg.token) {
     const file = await ghGet('data/board.json');
     if (file) remote = JSON.parse(b64DecodeUtf8(file.content));
-  } else {
-    // No token: try the copy served next to the app (works on GitHub Pages).
+  } else if (location.protocol !== 'file:') {
+    // No token: fall back to the copy sitting next to the app. Skipped when the
+    // page was opened straight off disk, where fetch is blocked by CORS anyway.
     try {
       const res = await fetch('data/board.json?t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) remote = await res.json();
-    } catch { /* offline / not hosted — local only */ }
+    } catch { /* offline or not served — local only */ }
   }
   if (remote && (remote.updatedAt || 0) > (state.updatedAt || 0)) {
     state = normalizeState(remote);
