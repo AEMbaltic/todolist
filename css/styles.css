@@ -17,10 +17,15 @@
   --amber:      #F2B33D;  /* accent — buttons, active state  */
   --amber-deep: #D9992A;
 
-  /* ground */
-  --ground:   #121A21;
-  --dot:      #22323F;
-  --glow:     rgba(46, 86, 124, .30);
+  /* ground — the halftone field: a dim dot everywhere, plus a brighter
+     blue dot layer masked to one soft band, which is what gives the
+     reference its sense of light falling across the grid */
+  --ground:    #101820;
+  --dot:       #24333F;
+  --dot-lit:   #3E5A73;
+  --glow:      rgba(42, 82, 120, .34);
+  --dot-gap:   10px;
+  --dot-size:  1.35px;
   --surface:  #1B2731;    /* window body                     */
   --surface-2:#213039;    /* rows, stat chips                */
   --field:    #15202A;    /* inputs                          */
@@ -53,14 +58,32 @@ body {
   color: var(--text);
   background-color: var(--ground);
   background-image:
-    radial-gradient(circle at 1px 1px, var(--dot) 1.15px, transparent 1.15px),
-    radial-gradient(ellipse 85% 65% at 28% 48%, var(--glow), transparent 66%);
-  background-size: 16px 16px, 100% 100%;
+    radial-gradient(circle at 1px 1px, var(--dot) var(--dot-size), transparent var(--dot-size)),
+    radial-gradient(ellipse 80% 62% at 26% 50%, var(--glow), transparent 68%);
+  background-size: var(--dot-gap) var(--dot-gap), 100% 100%;
   background-attachment: fixed;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+
+/* The lit dots: same grid, brighter blue, faded in over the glow band so the
+   halftone brightens across the field instead of sitting at one flat value. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--dot-lit) var(--dot-size), transparent var(--dot-size));
+  background-size: var(--dot-gap) var(--dot-gap);
+  -webkit-mask-image: radial-gradient(ellipse 62% 52% at 24% 52%, #000 12%, transparent 72%);
+          mask-image: radial-gradient(ellipse 62% 52% at 24% 52%, #000 12%, transparent 72%);
+}
+
+/* Keep the chrome above the dot field. */
+.topbar, .desktop, .hintbar { position: relative; z-index: 1; }
 
 :focus-visible {
   outline: 2px solid var(--amber);
@@ -95,12 +118,14 @@ body {
   color: var(--terracotta);
   line-height: 1;
 }
+/* The real logo sets "AEM" and "Baltic" in one rust; only the weight differs.
+   Lifted here toward terracotta so it holds up on the dark ground. */
 .brand-mark span {
   font-style: normal;
-  font-weight: 400;
-  letter-spacing: .01em;
-  margin-left: .3em;
-  color: var(--orange);
+  font-weight: 300;
+  letter-spacing: .02em;
+  margin-left: .32em;
+  color: var(--terracotta);
 }
 
 .brand-sub {

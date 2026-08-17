@@ -429,18 +429,35 @@ function saveLayout() {
   try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* non-fatal */ }
 }
 
-/** Lay the windows out in a row across the desktop. */
-function tidy() {
+/** Geometry for a tidy grid: as many columns as fit at a comfortable width. */
+function tileGrid() {
   const board = $('#board');
   const W = board.clientWidth, H = board.clientHeight;
   const n = state.clients.length;
   const gap = 14;
-  const w = Math.max(MIN_W, Math.floor((W - gap * (n + 1)) / n));
-  const h = Math.max(MIN_H, Math.min(560, H - gap * 2));
+  const COMFORTABLE = 360;   // below this, job titles start wrapping badly
+  const cols = Math.max(1, Math.min(n, Math.floor((W - gap) / (COMFORTABLE + gap)) || 1));
+  const rows = Math.ceil(n / cols);
+  const w = Math.max(MIN_W, Math.floor((W - gap * (cols + 1)) / cols));
+  const h = Math.max(MIN_H, Math.min(560, Math.floor((H - gap * (rows + 1)) / rows)));
+  return { gap, cols, w, h };
+}
+
+function tilePos(i, g) {
+  return {
+    x: g.gap + (i % g.cols) * (g.w + g.gap),
+    y: g.gap + Math.floor(i / g.cols) * (g.h + g.gap),
+  };
+}
+
+/** Lay the windows back out in a tidy grid. */
+function tidy() {
+  const g = tileGrid();
   state.clients.forEach((c, i) => {
-    layout[c.id] = { x: gap + i * (w + gap), y: gap, w, h, z: 10 + i, collapsed: false };
+    const p = tilePos(i, g);
+    layout[c.id] = { x: p.x, y: p.y, w: g.w, h: g.h, z: 10 + i, collapsed: false };
   });
-  topZ = 10 + n;
+  topZ = 10 + state.clients.length;
   saveLayout();
   render();
 }
@@ -452,21 +469,20 @@ function applyLayout() {
   if (stacked()) return;
 
   const W = board.clientWidth, H = board.clientHeight;
-  const gap = 14;
-  const n = state.clients.length;
-  const defW = Math.max(MIN_W, Math.floor((W - gap * (n + 1)) / n));
-  const defH = Math.max(MIN_H, Math.min(560, H - gap * 2));
+  const g = tileGrid();
+  const gap = g.gap;
 
   state.clients.forEach((c, i) => {
     const el = board.querySelector(`.column[data-client="${c.id}"]`);
     if (!el) return;
     let lay = layout[c.id];
     if (!lay) {
-      lay = { x: gap + i * (defW + gap), y: gap, w: defW, h: defH, z: 10 + i, collapsed: false };
+      const p = tilePos(i, g);
+      lay = { x: p.x, y: p.y, w: g.w, h: g.h, z: 10 + i, collapsed: false };
       layout[c.id] = lay;
     }
-    lay.w = Math.max(MIN_W, Math.min(lay.w || defW, Math.max(MIN_W, W - 2 * gap)));
-    lay.h = Math.max(MIN_H, lay.h || defH);
+    lay.w = Math.max(MIN_W, Math.min(lay.w || g.w, Math.max(MIN_W, W - 2 * gap)));
+    lay.h = Math.max(MIN_H, lay.h || g.h);
     // Keep every window reachable: at least a corner stays inside the desktop.
     lay.x = Math.max(0, Math.min(lay.x, Math.max(0, W - 120)));
     lay.y = Math.max(0, Math.min(lay.y, Math.max(0, H - 44)));
@@ -940,8 +956,14 @@ function closeModal(id) { $('#' + id).classList.add('hidden'); }
 function initBrand() {
   const img = $('#brandLogo');
   const text = $('#brandText');
-  img.addEventListener('error', () => { img.remove(); text.hidden = false; });
-  img.src = 'assets/logo.png';
+  const candidates = ['assets/logo.svg', 'assets/logo.png', 'assets/logo.webp'];
+  let i = 0;
+  const tryNext = () => {
+    if (i >= candidates.length) { img.remove(); text.hidden = false; return; }
+    img.src = candidates[i++];
+  };
+  img.addEventListener('error', tryNext);
+  tryNext();
 }
 
 function init() {
