@@ -31,8 +31,13 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
+      # enablement lets the workflow switch Pages on itself. Without it the run
+      # fails with "Get Pages site failed / Not Found" whenever Pages has been
+      # disabled in the repository settings.
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload the site
         uses: actions/upload-pages-artifact@v3
