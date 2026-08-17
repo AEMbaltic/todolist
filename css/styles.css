@@ -107,7 +107,16 @@ body::before {
 }
 
 .brand { display: flex; align-items: center; gap: .85rem; flex-wrap: wrap; }
-.brand-logo { height: 34px; width: auto; display: block; }
+
+/* The logo is a tall, near-square lockup rather than a slim horizontal one,
+   so it needs real height or "Baltic" turns to mush. The small brightness
+   lift keeps the rust off the dark bar without shifting its hue. */
+.brand-logo {
+  height: 46px;
+  width: auto;
+  display: block;
+  filter: brightness(1.18) saturate(1.04);
+}
 
 .brand-mark {
   font-family: var(--serif);
