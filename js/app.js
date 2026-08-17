@@ -21,13 +21,18 @@ const STACK_BELOW = 820;   // px viewport width under which windows stop floatin
 
 const defaultCfg = { owner: 'AEMbaltic', repo: 'todolist', branch: 'main', token: '' };
 
+// One colour per client, so a window is recognisable before you read its title.
+// Drawn from the AEM Baltic warm range, with the deep teal of the halftone
+// ground for contrast; all of them carry white text at accessible contrast.
+const CLIENT_COLORS = ['#9A3520', '#C2662B', '#2E6065', '#7A5A2A', '#6B3A4A', '#46685A'];
+
 const defaultState = () => ({
   version: 1,
   updatedAt: 0,
   clients: [
-    { id: 'bazevics', name: 'Bazevics', rate: 0, jobs: [], images: [] },
-    { id: 'mandrele', name: 'Mandrele', rate: 0, jobs: [], images: [] },
-    { id: 'others',   name: 'Others',   rate: 0, jobs: [], images: [] },
+    { id: 'bazevics', name: 'Bazevics', rate: 0, color: CLIENT_COLORS[0], jobs: [], images: [] },
+    { id: 'mandrele', name: 'Mandrele', rate: 0, color: CLIENT_COLORS[1], jobs: [], images: [] },
+    { id: 'others',   name: 'Others',   rate: 0, color: CLIENT_COLORS[2], jobs: [], images: [] },
   ],
 });
 
@@ -53,8 +58,10 @@ function normalizeState(s) {
   if (!s || !Array.isArray(s.clients)) return base;
   s.version = s.version || 1;
   s.updatedAt = s.updatedAt || 0;
-  for (const c of s.clients) {
+  s.clients.forEach((c, i) => {
     c.rate = Number(c.rate) || 0;
+    // Boards saved before colours existed, and any client added by hand, get one.
+    if (!/^#[0-9a-f]{6}$/i.test(c.color || '')) c.color = CLIENT_COLORS[i % CLIENT_COLORS.length];
     c.jobs = Array.isArray(c.jobs) ? c.jobs : [];
     c.images = Array.isArray(c.images) ? c.images : [];
     for (const j of c.jobs) {
@@ -62,7 +69,7 @@ function normalizeState(s) {
       j.done = !!j.done;
       j.invoiced = !!j.invoiced;
     }
-  }
+  });
   return s;
 }
 
@@ -342,9 +349,10 @@ function jobRowHtml(c, j) {
       <input type="checkbox" ${j.done ? 'checked' : ''} data-act="toggle" title="Mark done">
       <span class="job-text" data-act="edit" title="Click to edit">${esc(j.text)}</span>
       ${j.invoiced ? '<span class="badge-invoiced">invoiced</span>' : ''}
-      <input class="job-hours" type="number" min="0" step="0.5" value="${j.hours || ''}"
-             placeholder="h" data-act="hours" title="Hours spent">
-      <span class="job-hours-label">h</span>
+      <span class="hours-field" title="Hours spent">
+        <input class="job-hours" type="number" min="0" step="0.5" value="${j.hours || ''}"
+               placeholder="0" data-act="hours"><i>h</i>
+      </span>
       <button class="job-del" data-act="del" title="Delete job">&#10005;</button>
     </li>`;
 }
@@ -373,23 +381,23 @@ function render() {
     const lay = layout[c.id] || {};
     return `
     <section class="column ${c.id === activeClientId ? 'active' : ''} ${lay.collapsed ? 'collapsed' : ''}"
-             data-client="${c.id}">
+             data-client="${c.id}" style="--win: ${esc(c.color)}">
       <div class="win-head" data-act="drag">
         <span class="win-title">${esc(c.name)}</span>
         <span class="paste-flag">paste here</span>
         <span class="win-spacer"></span>
-        <label class="rate">rate
-          <input type="number" min="0" step="1" value="${c.rate || ''}" placeholder="0" data-act="rate"> €/h
-        </label>
         <button class="win-btn" data-act="collapse" type="button"
                 title="${lay.collapsed ? 'Expand' : 'Collapse'} this window">${lay.collapsed ? '&#9633;' : '&#8722;'}</button>
       </div>
       <div class="win-body">
         <div class="col-stats">
-          <span class="stat">open <b>${s.openCount}</b></span>
-          <span class="stat">done, not invoiced <b>${s.doneCount}</b></span>
-          <span class="stat">hours <b>${fmtHours(s.hours)}</b></span>
-          <span class="stat owed">owed <b>${fmtEur(s.owed)}</b></span>
+          <span class="stat"><i>open</i><b>${s.openCount}</b></span>
+          <span class="stat"><i>to invoice</i><b>${s.doneCount}</b></span>
+          <span class="stat"><i>hours</i><b>${fmtHours(s.hours)}</b></span>
+          <span class="stat owed"><i>owed</i><b>${fmtEur(s.owed)}</b></span>
+          <label class="rate" title="Hourly rate for ${esc(c.name)}">
+            <input type="number" min="0" step="1" value="${c.rate || ''}" placeholder="0" data-act="rate"><i>€/h</i>
+          </label>
         </div>
         <div class="scroll-area">
           <ul class="jobs" data-client="${c.id}">
