@@ -11,6 +11,13 @@
 
 const CFG_KEY = 'aem-board-cfg';
 const STATE_KEY = 'aem-board-state';
+// Window positions are a per-person preference, not shared client data, so they
+// stay in this browser and never reach board.json — otherwise every window drag
+// would commit to the repository.
+const LAYOUT_KEY = 'aem-board-layout';
+
+const MIN_W = 280, MIN_H = 190;
+const STACK_BELOW = 820;   // px viewport width under which windows stop floating
 
 const defaultCfg = { owner: 'AEMbaltic', repo: 'todolist', branch: 'main', token: '' };
 
@@ -27,6 +34,8 @@ const defaultState = () => ({
 let cfg = { ...defaultCfg, ...loadJSON(CFG_KEY) };
 let state = normalizeState(loadJSON(STATE_KEY) || defaultState());
 
+let layout = loadJSON(LAYOUT_KEY) || {};   // clientId -> {x,y,w,h,z,collapsed}
+let topZ = 10;
 let activeClientId = state.clients[0] ? state.clients[0].id : null;
 let lightboxRef = null;           // { clientId, imageId }
 let dragRef = null;               // { clientId, jobId }
@@ -360,34 +369,44 @@ function render() {
   const board = $('#board');
   board.innerHTML = state.clients.map((c) => {
     const s = columnStats(c);
+    const lay = layout[c.id] || {};
     return `
-    <section class="column ${c.id === activeClientId ? 'active' : ''}" data-client="${c.id}">
-      <div class="col-head">
-        <div>
-          <span class="col-title">${esc(c.name)}</span>
-          <span class="paste-flag">paste target — Ctrl+V</span>
-        </div>
+    <section class="column ${c.id === activeClientId ? 'active' : ''} ${lay.collapsed ? 'collapsed' : ''}"
+             data-client="${c.id}">
+      <div class="win-head" data-act="drag">
+        <span class="win-title">${esc(c.name)}</span>
+        <span class="paste-flag">paste here</span>
+        <span class="win-spacer"></span>
         <label class="rate">rate
           <input type="number" min="0" step="1" value="${c.rate || ''}" placeholder="0" data-act="rate"> €/h
         </label>
+        <button class="win-btn" data-act="collapse" type="button"
+                title="${lay.collapsed ? 'Expand' : 'Collapse'} this window">${lay.collapsed ? '&#9633;' : '&#8722;'}</button>
       </div>
-      <div class="col-stats">
-        <span class="stat">open <b>${s.openCount}</b></span>
-        <span class="stat">done, not invoiced <b>${s.doneCount}</b></span>
-        <span class="stat">hours <b>${fmtHours(s.hours)}</b></span>
-        <span class="stat owed">owed <b>${fmtEur(s.owed)}</b></span>
+      <div class="win-body">
+        <div class="col-stats">
+          <span class="stat">open <b>${s.openCount}</b></span>
+          <span class="stat">done, not invoiced <b>${s.doneCount}</b></span>
+          <span class="stat">hours <b>${fmtHours(s.hours)}</b></span>
+          <span class="stat owed">owed <b>${fmtEur(s.owed)}</b></span>
+        </div>
+        <div class="scroll-area">
+          <ul class="jobs" data-client="${c.id}">
+            ${c.jobs.map((j) => jobRowHtml(c, j)).join('')}
+          </ul>
+          ${c.images.length ? `<div class="cards">${c.images.map((i) => cardHtml(c, i)).join('')}</div>` : ''}
+        </div>
+        <form class="add-job" data-client="${c.id}">
+          <input type="text" name="text" placeholder="New job for ${esc(c.name)}…" autocomplete="off">
+          <input type="number" name="hours" min="0" step="0.5" placeholder="h" title="Hours (optional)">
+          <button class="btn btn-accent" type="submit">+ Add</button>
+        </form>
       </div>
-      <ul class="jobs" data-client="${c.id}">
-        ${c.jobs.map((j) => jobRowHtml(c, j)).join('')}
-      </ul>
-      <form class="add-job" data-client="${c.id}">
-        <input type="text" name="text" placeholder="New job for ${esc(c.name)}…" autocomplete="off">
-        <input type="number" name="hours" min="0" step="0.5" placeholder="h" title="Hours (optional)">
-        <button class="btn btn-accent" type="submit">+ Add</button>
-      </form>
-      ${c.images.length ? `<div class="cards">${c.images.map((i) => cardHtml(c, i)).join('')}</div>` : ''}
+      <div class="win-grip" data-act="resize" title="Drag to resize"></div>
     </section>`;
   }).join('');
+
+  applyLayout();
 
   // Fill in image thumbnails asynchronously.
   for (const c of state.clients) {
@@ -400,14 +419,153 @@ function render() {
   }
 }
 
+/* ---------------- floating windows ---------------- */
+
+function stacked() {
+  return window.innerWidth < STACK_BELOW;
+}
+
+function saveLayout() {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* non-fatal */ }
+}
+
+/** Lay the windows out in a row across the desktop. */
+function tidy() {
+  const board = $('#board');
+  const W = board.clientWidth, H = board.clientHeight;
+  const n = state.clients.length;
+  const gap = 14;
+  const w = Math.max(MIN_W, Math.floor((W - gap * (n + 1)) / n));
+  const h = Math.max(MIN_H, Math.min(560, H - gap * 2));
+  state.clients.forEach((c, i) => {
+    layout[c.id] = { x: gap + i * (w + gap), y: gap, w, h, z: 10 + i, collapsed: false };
+  });
+  topZ = 10 + n;
+  saveLayout();
+  render();
+}
+
+/** Push the stored geometry onto the DOM, filling in anything missing. */
+function applyLayout() {
+  const board = $('#board');
+  board.classList.toggle('stacked', stacked());
+  if (stacked()) return;
+
+  const W = board.clientWidth, H = board.clientHeight;
+  const gap = 14;
+  const n = state.clients.length;
+  const defW = Math.max(MIN_W, Math.floor((W - gap * (n + 1)) / n));
+  const defH = Math.max(MIN_H, Math.min(560, H - gap * 2));
+
+  state.clients.forEach((c, i) => {
+    const el = board.querySelector(`.column[data-client="${c.id}"]`);
+    if (!el) return;
+    let lay = layout[c.id];
+    if (!lay) {
+      lay = { x: gap + i * (defW + gap), y: gap, w: defW, h: defH, z: 10 + i, collapsed: false };
+      layout[c.id] = lay;
+    }
+    lay.w = Math.max(MIN_W, Math.min(lay.w || defW, Math.max(MIN_W, W - 2 * gap)));
+    lay.h = Math.max(MIN_H, lay.h || defH);
+    // Keep every window reachable: at least a corner stays inside the desktop.
+    lay.x = Math.max(0, Math.min(lay.x, Math.max(0, W - 120)));
+    lay.y = Math.max(0, Math.min(lay.y, Math.max(0, H - 44)));
+
+    el.style.left = lay.x + 'px';
+    el.style.top = lay.y + 'px';
+    el.style.width = lay.w + 'px';
+    if (!lay.collapsed) el.style.height = lay.h + 'px';
+    el.style.zIndex = lay.z || 10;
+    topZ = Math.max(topZ, lay.z || 10);
+  });
+  saveLayout();
+}
+
+function bringToFront(clientId) {
+  const lay = layout[clientId];
+  if (!lay || lay.z === topZ) return;
+  lay.z = ++topZ;
+  const el = $(`.column[data-client="${clientId}"]`);
+  if (el) el.style.zIndex = lay.z;
+  saveLayout();
+}
+
+function toggleCollapse(clientId) {
+  const lay = layout[clientId];
+  if (!lay) return;
+  lay.collapsed = !lay.collapsed;
+  saveLayout();
+  render();
+}
+
+/** Pointer-driven move and resize. One handler serves both. */
+function startWindowDrag(e) {
+  if (stacked() || e.button !== 0) return;
+  const handle = e.target.closest('[data-act="drag"], [data-act="resize"]');
+  if (!handle) return;
+  // Controls that live inside the title bar keep their own behaviour.
+  if (e.target.closest('input, button')) return;
+
+  const el = handle.closest('.column');
+  const id = el.dataset.client;
+  const lay = layout[id];
+  if (!lay) return;
+
+  const mode = handle.dataset.act;      // 'drag' | 'resize'
+  const board = $('#board');
+  const startX = e.clientX, startY = e.clientY;
+  const orig = { x: lay.x, y: lay.y, w: lay.w, h: lay.h };
+
+  activeColumn(id);
+  bringToFront(id);
+  el.classList.add('dragging-window');
+  handle.setPointerCapture(e.pointerId);
+  e.preventDefault();
+
+  const onMove = (ev) => {
+    const dx = ev.clientX - startX, dy = ev.clientY - startY;
+    if (mode === 'drag') {
+      lay.x = Math.max(0, Math.min(orig.x + dx, Math.max(0, board.clientWidth - 120)));
+      lay.y = Math.max(0, Math.min(orig.y + dy, Math.max(0, board.clientHeight - 44)));
+      el.style.left = lay.x + 'px';
+      el.style.top = lay.y + 'px';
+    } else {
+      lay.w = Math.max(MIN_W, Math.min(orig.w + dx, board.clientWidth - lay.x));
+      lay.h = Math.max(MIN_H, Math.min(orig.h + dy, board.clientHeight - lay.y));
+      el.style.width = lay.w + 'px';
+      el.style.height = lay.h + 'px';
+    }
+  };
+
+  const onUp = () => {
+    handle.removeEventListener('pointermove', onMove);
+    handle.removeEventListener('pointerup', onUp);
+    handle.removeEventListener('pointercancel', onUp);
+    el.classList.remove('dragging-window');
+    saveLayout();
+  };
+
+  handle.addEventListener('pointermove', onMove);
+  handle.addEventListener('pointerup', onUp);
+  handle.addEventListener('pointercancel', onUp);
+}
+
 /* ---------------- board interactions ---------------- */
 
 function onBoardClick(e) {
   const colEl = e.target.closest('.column');
-  if (colEl) activeColumn(colEl.dataset.client);
+  if (colEl) {
+    activeColumn(colEl.dataset.client);
+    bringToFront(colEl.dataset.client);
+  }
 
   const jobEl = e.target.closest('.job');
   const act = e.target.dataset.act;
+
+  if (act === 'collapse') {
+    toggleCollapse(colEl.dataset.client);
+    return;
+  }
 
   if (jobEl && act === 'toggle') {
     const j = client(jobEl.dataset.client).jobs.find((x) => x.id === jobEl.dataset.job);
@@ -778,10 +936,20 @@ function closeModal(id) { $('#' + id).classList.add('hidden'); }
 
 /* ---------------- wiring ---------------- */
 
+/** Use the real logo file if one has been committed, otherwise set the wordmark. */
+function initBrand() {
+  const img = $('#brandLogo');
+  const text = $('#brandText');
+  img.addEventListener('error', () => { img.remove(); text.hidden = false; });
+  img.src = 'assets/logo.png';
+}
+
 function init() {
+  initBrand();
   render();
 
   const board = $('#board');
+  board.addEventListener('pointerdown', startWindowDrag);
   board.addEventListener('click', onBoardClick);
   board.addEventListener('change', onBoardChange);
   board.addEventListener('submit', onAddJob);
@@ -792,7 +960,15 @@ function init() {
 
   document.addEventListener('paste', onPaste);
 
+  $('#btnTidy').addEventListener('click', tidy);
   $('#btnSync').addEventListener('click', fullSync);
+
+  // Re-clamp windows so none is stranded off-screen after a resize.
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(applyLayout, 150);
+  });
   $('#btnBilling').addEventListener('click', openBilling);
   $('#btnSettings').addEventListener('click', openSettings);
 

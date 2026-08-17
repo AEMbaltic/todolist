@@ -5,27 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AEM Baltic — Client Task Board</title>
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230E2A47'/><text x='50' y='68' font-size='52' font-family='Arial' font-weight='bold' text-anchor='middle' fill='%23F39200'>A</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23121A21'/><text x='50' y='70' font-size='56' font-family='Georgia,serif' font-style='italic' font-weight='bold' text-anchor='middle' fill='%23C4512F'>A</text></svg>">
 </head>
 <body>
 
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark">AEM<span>BALTIC</span></div>
-      <div class="brand-sub">Client Task Board</div>
+      <img id="brandLogo" class="brand-logo" alt="AEM Baltic">
+      <span id="brandText" class="brand-mark" hidden>AEM<span>Baltic</span></span>
+      <span class="brand-sub">Client Task Board</span>
     </div>
     <div class="topbar-actions">
       <span id="syncStatus" class="sync-status" title="Sync status">Local only</span>
+      <button id="btnTidy" class="btn btn-ghost" title="Arrange the windows back into a row">&#9783; Tidy</button>
       <button id="btnSync" class="btn btn-ghost" title="Pull latest &amp; push changes to GitHub">&#8635; Sync</button>
       <button id="btnBilling" class="btn btn-accent" title="Hours &amp; billing report">&euro; Billing</button>
       <button id="btnSettings" class="btn btn-ghost" title="GitHub storage settings">&#9881; Settings</button>
     </div>
   </header>
 
-  <main id="board" class="board" aria-label="Client boards"></main>
+  <main id="board" class="desktop" aria-label="Client boards"></main>
 
   <footer class="hintbar">
-    <b>Tip:</b> click a client column to select it, then paste a snip with <kbd>Ctrl</kbd>+<kbd>V</kbd> — the screenshot lands on that column. You can also drag &amp; drop image files onto a column.
+    <b>Drag a window by its title bar</b> to move it, or the bottom-right corner to resize.
+    Click a window to select it, then paste a snip with <kbd>Ctrl</kbd>+<kbd>V</kbd> to drop the
+    screenshot on that client. Jobs can be dragged between windows.
   </footer>
 
   <!-- Lightbox -->
