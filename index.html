@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AEM Baltic — Client Task Board</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230E2A47'/><text x='50' y='68' font-size='52' font-family='Arial' font-weight='bold' text-anchor='middle' fill='%23F39200'>A</text></svg>">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">AEM<span>BALTIC</span></div>
+      <div class="brand-sub">Client Task Board</div>
+    </div>
+    <div class="topbar-actions">
+      <span id="syncStatus" class="sync-status" title="Sync status">Local only</span>
+      <button id="btnSync" class="btn btn-ghost" title="Pull latest &amp; push changes to GitHub">&#8635; Sync</button>
+      <button id="btnBilling" class="btn btn-accent" title="Hours &amp; billing report">&euro; Billing</button>
+      <button id="btnSettings" class="btn btn-ghost" title="GitHub storage settings">&#9881; Settings</button>
+    </div>
+  </header>
+
+  <main id="board" class="board" aria-label="Client boards"></main>
+
+  <footer class="hintbar">
+    <b>Tip:</b> click a client column to select it, then paste a snip with <kbd>Ctrl</kbd>+<kbd>V</kbd> — the screenshot lands on that column. You can also drag &amp; drop image files onto a column.
+  </footer>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="overlay hidden">
+    <div class="lightbox-inner">
+      <img id="lightboxImg" alt="Screenshot">
+      <div class="lightbox-bar">
+        <input id="lightboxCaption" type="text" placeholder="Add a caption…" maxlength="200">
+        <button id="lightboxDelete" class="btn btn-danger">Delete</button>
+        <button id="lightboxClose" class="btn btn-ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Billing modal -->
+  <div id="billingModal" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Hours &amp; billing</h2>
+        <button class="btn btn-ghost" data-close="billingModal">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="billing-controls">
+          <label>Client
+            <select id="billingClient"></select>
+          </label>
+          <label>Show
+            <select id="billingFilter">
+              <option value="open">Done — not yet invoiced</option>
+              <option value="all">All done jobs</option>
+            </select>
+          </label>
+        </div>
+        <div id="billingContent"></div>
+      </div>
+      <div class="modal-foot">
+        <button id="btnCopyReport" class="btn btn-ghost">Copy report</button>
+        <button id="btnMarkInvoiced" class="btn btn-accent">Mark shown as invoiced</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settingsModal" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>GitHub storage</h2>
+        <button class="btn btn-ghost" data-close="settingsModal">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <p class="muted">
+          The board saves to <code>data/board.json</code> in your GitHub repository, and pasted
+          screenshots to <code>data/img/</code>. Create a
+          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained personal access token</a>
+          scoped to this repository with <b>Contents: Read and write</b> permission, and paste it below.
+          The token is stored only in this browser.
+        </p>
+        <label class="field">Owner <input id="cfgOwner" type="text" placeholder="AEMbaltic"></label>
+        <label class="field">Repository <input id="cfgRepo" type="text" placeholder="todolist"></label>
+        <label class="field">Branch <input id="cfgBranch" type="text" placeholder="main"></label>
+        <label class="field">Access token <input id="cfgToken" type="password" placeholder="github_pat_…"></label>
+        <div id="cfgTestResult" class="muted"></div>
+      </div>
+      <div class="modal-foot">
+        <button id="btnTestCfg" class="btn btn-ghost">Test connection</button>
+        <button id="btnSaveCfg" class="btn btn-accent">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

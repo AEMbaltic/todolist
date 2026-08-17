@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "updatedAt": 0,
+  "clients": [
+    {
+      "id": "bazevics",
+      "name": "Bazevics",
+      "rate": 0,
+      "jobs": [],
+      "images": []
+    },
+    {
+      "id": "mandrele",
+      "name": "Mandrele",
+      "rate": 0,
+      "jobs": [],
+      "images": []
+    },
+    {
+      "id": "others",
+      "name": "Others",
+      "rate": 0,
+      "jobs": [],
+      "images": []
+    }
+  ]
+}
